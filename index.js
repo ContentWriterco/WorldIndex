@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const app = express();
@@ -21,7 +22,7 @@ app.get("/poland/:title", async (req, res) => {
         params: {
           filterByFormula: `LOWER({Title}) = "${title.toLowerCase()}"`
         }
-        
+      }
     );
 
     const record = response.data.records[0];
@@ -55,7 +56,7 @@ app.get("/poland/:title", async (req, res) => {
       sourceName: fields["Source Name"] || "",
       titleEN: fields["TitleEN"] || "",
       descriptionEN: fields["DescriptionEN"] || "",
-      formatEN: fields["DataEN"] || "", // lub fields["FormatEN"] jeśli masz osobno
+      formatEN: fields["DataEN"] || "",
       ...parsedData
     };
 
@@ -65,7 +66,6 @@ app.get("/poland/:title", async (req, res) => {
     res.status(500).json({ error: error.toString() });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`API działa na porcie ${PORT}`);
