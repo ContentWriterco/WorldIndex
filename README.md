@@ -12,8 +12,6 @@ Every dataset is available through a consistent API structure and designed to be
 - Automatically updated via official sources
 - Easy to visualize, compare, and embed
 
-> **“WorldIndex – 21st century data, restructured.”**
-
 ---
 
 ### ✅ Features
@@ -58,12 +56,16 @@ Every dataset endpoint returns:
     ...
   }
 }
+```
+
 
 To view all available datasets:
 https://api.worldindex.co/titlelist
 
 The API is publicly hosted and available at:
 https://api.worldindex.co/poland/:title
+
+Replace :title with the title dataset, such as inflation or armed-forces.
 
 ### 📩 Want API Access?
 
