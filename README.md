@@ -31,7 +31,7 @@ Every dataset is available through a consistent API structure and designed to be
 - Number of women in the Polish army
 - Inflation and unemployment over time
 - Name popularity and demographic changes
-- Crime rates and education statistics *(coming soon)*
+- Crime rates and education statistics
 
 ---
 
@@ -49,12 +49,12 @@ Every dataset endpoint returns:
     ...
   },
   "data": [
-    { "year": 2020, "Land Forces": 7708, ... },
+    { "year": 2020, "value": 7708, ... },
     ...
   ],
   "translations": {
     "TitleFR": "...",
-    "DescriptionPL": "...",
+    "DescriptionFR": "...",
     ...
   }
 }
