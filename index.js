@@ -15,7 +15,7 @@ const LANGUAGES = [
   "PL", "HU", "GR", "RO", "BG", "EN"
 ];
 
-// Endpoint główny
+// Main API endpoint
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -39,19 +39,26 @@ app.get("/poland/:titleEN", async (req, res) => {
 
     const fields = record.fields;
 
-    // 📊 Dane: array of { year, value }
+    // 📊 Parse structured tabular data using headers from DataEN
     const data = [];
-    if (fields["Data"]) {
+    if (fields["Data"] && fields["DataEN"]) {
+      const headers = fields["DataEN"].split(";").map((h) => h.trim());
       const lines = fields["Data"].split("\n");
-      for (const line of lines) {
-        const [year, value] = line.split(";");
-        if (year && value) {
-          data.push({ year: parseInt(year.trim()), value: parseFloat(value) });
-        }
+
+      for (let i = 0; i < lines.length; i++) {
+        const values = lines[i].split(";").map((v) => v.trim());
+        const row = {};
+
+        headers.forEach((key, index) => {
+          const val = values[index];
+          row[key === "Year" ? "year" : key] = isNaN(val) ? val : parseFloat(val);
+        });
+
+        data.push(row);
       }
     }
 
-    // 🧾 Metadane główne
+    // 📎 Main metadata
     const meta = {
       titleEN: fields["TitleEN"] || "",
       descriptionEN: fields["DescriptionEN"] || "",
@@ -62,12 +69,12 @@ app.get("/poland/:titleEN", async (req, res) => {
       sourceName: fields["Source Name"] || ""
     };
 
-    // ✅ categoryView jako string
+    // Include categoryView only if it's not empty
     if (fields["CategoryView"] && Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
       meta.categoryView = fields["CategoryView"][0];
     }
 
-    // 🌐 Tłumaczenia
+    // 🌍 Collect translations per language
     const translations = {};
     LANGUAGES.forEach((lang) => {
       const titleKey = `Title${lang}`;
@@ -81,6 +88,7 @@ app.get("/poland/:titleEN", async (req, res) => {
       if (fields[commentKey]) translations[commentKey] = fields[commentKey];
     });
 
+    // Return full JSON response
     res.json({
       ...meta,
       data,
@@ -92,7 +100,7 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Endpoint listy dostępnych tytułów
+// Endpoint to list all available datasets
 app.get("/titlelist", async (req, res) => {
   try {
     const response = await axios.get(
