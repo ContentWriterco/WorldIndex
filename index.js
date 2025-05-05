@@ -56,22 +56,28 @@ app.get("/poland/:titleEN", async (req, res) => {
       }
     }
 
-    // Main metadata (EN)
+    // Build metadata with optional fields
     const meta = {
-      titleEN: fields["TitleEN"] || "",
-      descriptionEN: fields["DescriptionEN"] || "",
+      title: fields["TitleEN"] || "",
+      description: fields["DescriptionEN"] || "",
       updateFrequency: fields["UpdateFrequency"] || "",
-      dataEN: fields["DataEN"] || "",
-      updatedThere: fields["UpdatedThere"] || "",
+      format: fields["DataEN"] || "",
+      lastUpdate: fields["UpdatedThere"] || "",
       nextUpdateTime: fields["NextUpdateTime"] || "",
       sourceName: fields["Source Name"] || ""
     };
 
     if (fields["CategoryView"] && Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
-      meta.categoryView = fields["CategoryView"][0];
+      meta.category = fields["CategoryView"][0];
     }
 
-    // Collect translations for other languages (excluding EN)
+    // Optional additional fields
+    if (fields["Definitions"]) meta.definitions = fields["Definitions"];
+    if (fields["ResearchName"]) meta.researchName = fields["ResearchName"];
+    if (fields["ResearchPurpose"]) meta.researchPurpose = fields["ResearchPurpose"];
+    if (fields["Unit"]) meta.unit = fields["Unit"];
+
+    // Translations (excluding EN)
     const translations = {};
     LANGUAGES.forEach((lang) => {
       if (lang === "EN") return;
@@ -98,7 +104,7 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Endpoint: /titlelist – returns list of datasets
+// Endpoint: /titlelist
 app.get("/titlelist", async (req, res) => {
   try {
     const response = await axios.get(
@@ -115,9 +121,9 @@ app.get("/titlelist", async (req, res) => {
       return {
         id: r.id,
         meta: {
-          titleEN: f["TitleEN"] || "",
-          descriptionEN: f["DescriptionEN"] || "",
-          categoryView: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+          title: f["TitleEN"] || "",
+          description: f["DescriptionEN"] || "",
+          category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
             ? f["CategoryView"][0]
             : ""
         }
