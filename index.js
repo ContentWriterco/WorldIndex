@@ -19,9 +19,9 @@ app.get("/poland/:title", async (req, res) => {
           Authorization: `Bearer ${AIRTABLE_API_KEY}`,
         },
         params: {
-          filterByFormula: `{Title} = "${title}"`
+          filterByFormula: `LOWER({Title}) = "${title.toLowerCase()}"`
         }
-      }
+        
     );
 
     const record = response.data.records[0];
