@@ -15,7 +15,7 @@ const LANGUAGES = [
   "PL", "HU", "GR", "RO", "BG", "EN"
 ];
 
-// Main API endpoint
+// Main API endpoint: /poland/:titleEN
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -39,7 +39,7 @@ app.get("/poland/:titleEN", async (req, res) => {
 
     const fields = record.fields;
 
-    // 📊 Parse structured tabular data using headers from DataEN
+    // Parse multi-column data using DataEN as headers
     const data = [];
     if (fields["Data"] && fields["DataEN"]) {
       const headers = fields["DataEN"].split(";").map((h) => h.trim());
@@ -48,35 +48,34 @@ app.get("/poland/:titleEN", async (req, res) => {
       for (let i = 0; i < lines.length; i++) {
         const values = lines[i].split(";").map((v) => v.trim());
         const row = {};
-
         headers.forEach((key, index) => {
           const val = values[index];
           row[key === "Year" ? "year" : key] = isNaN(val) ? val : parseFloat(val);
         });
-
         data.push(row);
       }
     }
 
-    // 📎 Main metadata
+    // Main metadata (EN)
     const meta = {
       titleEN: fields["TitleEN"] || "",
       descriptionEN: fields["DescriptionEN"] || "",
       updateFrequency: fields["UpdateFrequency"] || "",
-      formatEN: fields["DataEN"] || "",
+      dataEN: fields["DataEN"] || "",
       updatedThere: fields["UpdatedThere"] || "",
       nextUpdateTime: fields["NextUpdateTime"] || "",
       sourceName: fields["Source Name"] || ""
     };
 
-    // Include categoryView only if it's not empty
     if (fields["CategoryView"] && Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
       meta.categoryView = fields["CategoryView"][0];
     }
 
-    // 🌍 Collect translations per language
+    // Collect translations for other languages (excluding EN)
     const translations = {};
     LANGUAGES.forEach((lang) => {
+      if (lang === "EN") return;
+
       const titleKey = `Title${lang}`;
       const descriptionKey = `Description${lang}`;
       const dataKey = `Data${lang}`;
@@ -88,9 +87,8 @@ app.get("/poland/:titleEN", async (req, res) => {
       if (fields[commentKey]) translations[commentKey] = fields[commentKey];
     });
 
-    // Return full JSON response
     res.json({
-      ...meta,
+      meta,
       data,
       translations
     });
@@ -100,7 +98,7 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Endpoint to list all available datasets
+// Endpoint: /titlelist – returns list of datasets
 app.get("/titlelist", async (req, res) => {
   try {
     const response = await axios.get(
@@ -115,11 +113,14 @@ app.get("/titlelist", async (req, res) => {
     const records = response.data.records.map((r) => {
       const f = r.fields;
       return {
-        titleEN: f["TitleEN"] || "",
-        descriptionEN: f["DescriptionEN"] || "",
-        categoryView: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
-          ? f["CategoryView"][0]
-          : ""
+        id: r.id,
+        meta: {
+          titleEN: f["TitleEN"] || "",
+          descriptionEN: f["DescriptionEN"] || "",
+          categoryView: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+            ? f["CategoryView"][0]
+            : ""
+        }
       };
     });
 
