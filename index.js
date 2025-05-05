@@ -9,25 +9,6 @@ const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 
-// 🔍 Testowy endpoint
-app.get("/test", async (req, res) => {
-  try {
-    const response = await axios.get(
-      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
-      {
-        headers: {
-          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-        }
-      }
-    );
-
-    res.json(response.data.records.map(r => r.fields.Title));
-  } catch (error) {
-    res.status(500).json({ error: error.toString() });
-  }
-});
-
-// 📊 Główny endpoint z danymi
 app.get("/poland/:title", async (req, res) => {
   const { title } = req.params;
 
