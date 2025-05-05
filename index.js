@@ -9,8 +9,16 @@ const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 
-app.get("/poland/:title", async (req, res) => {
-  const { title } = req.params;
+// Supported language suffixes
+const LANGUAGES = [
+  "FR", "CZ", "SK", "IT", "CN", "JP", "SI", "LT", "LV", "FI",
+  "UA", "PT", "VN", "DE", "NL", "TR", "EE", "RS", "HR", "ES",
+  "PL", "HU", "GR", "RO", "BG", "EN"
+];
+
+// Get full record by TitleEN
+app.get("/poland/:titleEN", async (req, res) => {
+  const { titleEN } = req.params;
 
   try {
     const response = await axios.get(
@@ -20,7 +28,7 @@ app.get("/poland/:title", async (req, res) => {
           Authorization: `Bearer ${AIRTABLE_API_KEY}`,
         },
         params: {
-          filterByFormula: `LOWER({Title}) = "${title.toLowerCase()}"`
+          filterByFormula: `LOWER({TitleEN}) = "${titleEN.toLowerCase()}"`
         }
       }
     );
@@ -28,7 +36,7 @@ app.get("/poland/:title", async (req, res) => {
     const record = response.data.records[0];
 
     if (!record) {
-      return res.status(404).json({ error: `Brak danych dla "${title}"` });
+      return res.status(404).json({ error: `No data found for "${titleEN}"` });
     }
 
     const fields = record.fields;
@@ -45,26 +53,65 @@ app.get("/poland/:title", async (req, res) => {
     }
 
     const result = {
-      title: fields["Title"] || "",
-      description: fields["Description"] || "",
-      updateFrequency: fields["UpdateFrequency"] || "",
-      format: fields["Format"] || "",
-      updatedThere: fields["UpdatedThere"] || "",
-      nextUpdateTime: fields["NextUpdateTime"] || "",
-      sourceName: fields["Source Name"] || "",
       titleEN: fields["TitleEN"] || "",
       descriptionEN: fields["DescriptionEN"] || "",
+      updateFrequency: fields["UpdateFrequency"] || "",
       formatEN: fields["DataEN"] || "",
-      ...parsedData
+      updatedThere: fields["UpdatedThere"] || "",
+      nextUpdateTime: fields["NextUpdateTime"] || "",
+      sourceName: fields["Source Name"] || ""
     };
 
-    res.json(result);
+    LANGUAGES.forEach((lang) => {
+      const titleKey = `Title${lang}`;
+      const descriptionKey = `Description${lang}`;
+      const dataKey = `Data${lang}`;
+      const commentKey = `AIComment${lang}`;
+
+      if (fields[titleKey]) result[titleKey] = fields[titleKey];
+      if (fields[descriptionKey]) result[descriptionKey] = fields[descriptionKey];
+      if (fields[dataKey]) result[dataKey] = fields[dataKey];
+      if (fields[commentKey]) result[commentKey] = fields[commentKey];
+    });
+
+    if (fields["CategoryView"]) result["categoryView"] = fields["CategoryView"];
+    if (fields["ContentHub"]) result["contentHub"] = fields["ContentHub"];
+
+    res.json({ ...result, ...parsedData });
 
   } catch (error) {
-    res.status(500).json({ error: error.toString() });
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
+  }
+});
+
+// Get list of all available titles
+app.get("/titlelist", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
+      {
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+        }
+      }
+    );
+
+    const records = response.data.records.map((r) => {
+      const f = r.fields;
+      return {
+        titleEN: f["TitleEN"] || "",
+        descriptionEN: f["DescriptionEN"] || "",
+        categoryView: f["CategoryView"] || "",
+        contentHub: f["ContentHub"] || ""
+      };
+    });
+
+    res.json(records);
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`API działa na porcie ${PORT}`);
+  console.log(`API is running on port ${PORT}`);
 });
