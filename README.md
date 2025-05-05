@@ -58,3 +58,15 @@ Every dataset endpoint returns:
     ...
   }
 }
+
+To view all available datasets:
+https://api.worldindex.co/titlelist
+
+The API is publicly hosted and available at:
+https://api.worldindex.co/poland/:title
+
+### 📩 Want API Access?
+
+If you'd like to use the API commercially or integrate it with your product, please contact us directly by email for access: contact@contentwriter.co
+
+
