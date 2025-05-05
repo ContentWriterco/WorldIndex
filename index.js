@@ -51,7 +51,7 @@ app.get("/poland/:titleEN", async (req, res) => {
       }
     }
 
-    // 🧾 Metadane główne (po angielsku)
+    // 🧾 Metadane główne
     const meta = {
       titleEN: fields["TitleEN"] || "",
       descriptionEN: fields["DescriptionEN"] || "",
@@ -59,10 +59,13 @@ app.get("/poland/:titleEN", async (req, res) => {
       formatEN: fields["DataEN"] || "",
       updatedThere: fields["UpdatedThere"] || "",
       nextUpdateTime: fields["NextUpdateTime"] || "",
-      sourceName: fields["Source Name"] || "",
-      categoryView: fields["CategoryView"] || "",
-      contentHub: fields["ContentHub"] || ""
+      sourceName: fields["Source Name"] || ""
     };
+
+    // ✅ categoryView jako string
+    if (fields["CategoryView"] && Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
+      meta.categoryView = fields["CategoryView"][0];
+    }
 
     // 🌐 Tłumaczenia
     const translations = {};
@@ -78,7 +81,6 @@ app.get("/poland/:titleEN", async (req, res) => {
       if (fields[commentKey]) translations[commentKey] = fields[commentKey];
     });
 
-    // ✅ Finalna odpowiedź
     res.json({
       ...meta,
       data,
@@ -90,7 +92,7 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Endpoint z listą dostępnych tytułów
+// Endpoint listy dostępnych tytułów
 app.get("/titlelist", async (req, res) => {
   try {
     const response = await axios.get(
@@ -107,8 +109,9 @@ app.get("/titlelist", async (req, res) => {
       return {
         titleEN: f["TitleEN"] || "",
         descriptionEN: f["DescriptionEN"] || "",
-        categoryView: f["CategoryView"] || "",
-        contentHub: f["ContentHub"] || ""
+        categoryView: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+          ? f["CategoryView"][0]
+          : ""
       };
     });
 
