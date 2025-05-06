@@ -1,0 +1,17 @@
+# Ignoruj zależności Node.js
+node_modules/
+
+# Ignoruj środowisko lokalne
+.env
+
+# Ignoruj pliki systemowe (macOS)
+.DS_Store
+
+# Ignoruj logi
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignoruj foldery tymczasowe
+dist/
+build/
