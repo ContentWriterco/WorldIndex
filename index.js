@@ -116,19 +116,24 @@ app.get("/titlelist", async (req, res) => {
       }
     );
 
-    const records = response.data.records.map((r) => {
-      const f = r.fields;
-      return {
-        id: r.id,
-        meta: {
-          title: f["TitleEN"] || "",
-          description: f["DescriptionEN"] || "",
-          category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
-            ? f["CategoryView"][0]
-            : ""
-        }
-      };
-    });
+    const records = response.data.records
+      .filter((r) => {
+        const f = r.fields;
+        return f["TitleEN"] && f["TitleEN"].trim() !== "";
+      })
+      .map((r) => {
+        const f = r.fields;
+        return {
+          id: r.id,
+          meta: {
+            title: f["TitleEN"] || "",
+            description: f["DescriptionEN"] || "",
+            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+              ? f["CategoryView"][0]
+              : ""
+          }
+        };
+      });
 
     res.json(records);
   } catch (error) {
