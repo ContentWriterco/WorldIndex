@@ -25,7 +25,7 @@ app.use("/poland/:titleEN", (req, res, next) => {
   next();
 });
 
-// 🔐 Zabezpieczony endpoint
+// 🔐 Zabezpieczony endpoint: /poland/:titleEN
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -104,8 +104,8 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// 🟢 Publiczny endpoint
-app.get("/titlelist", async (req, res) => {
+// 🟢 Publiczny endpoint: /titlelist/poland
+app.get("/titlelist/poland", async (req, res) => {
   let allRecords = [];
   let offset = null;
 
@@ -130,16 +130,21 @@ app.get("/titlelist", async (req, res) => {
 
     const filteredRecords = allRecords
       .filter((r) => r.fields["TitleEN"] && r.fields["TitleEN"].trim() !== "")
-      .map((r) => ({
-        id: r.id,
-        meta: {
-          title: r.fields["TitleEN"],
-          description: r.fields["DescriptionEN"] || "",
-          category: Array.isArray(r.fields["CategoryView"]) && r.fields["CategoryView"].length > 0
-            ? r.fields["CategoryView"][0]
-            : ""
-        }
-      }));
+      .map((r) => {
+        const f = r.fields;
+        return {
+          id: r.id,
+          meta: {
+            title: f["TitleEN"],
+            description: f["DescriptionEN"] || "",
+            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+              ? f["CategoryView"][0]
+              : "",
+            lastUpdate: f["UpdatedThere"] || "",
+            nextUpdateTime: f["NextUpdateTime"] || ""
+          }
+        };
+      });
 
     res.json({ count: filteredRecords.length, items: filteredRecords });
 
