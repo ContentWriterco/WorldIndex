@@ -58,17 +58,19 @@ Every dataset endpoint returns:
 }
 ```
 
+## 📄 View Available Datasets
 
-To view all available datasets:
-https://api.worldindex.co/titlelist
+You can explore all available datasets for Poland here:  
+👉 [https://api.worldindex.co/titlelist/poland](https://api.worldindex.co/titlelist/poland)
 
-The API is publicly hosted and available at:
-https://api.worldindex.co/poland/:title
+---
 
-Replace :title with the title dataset, such as inflation or armed-forces.
+## 📩 Want API Access?
 
-### 📩 Want API Access?
+To integrate this API with your project, get access through RapidAPI:  
+👉 [https://rapidapi.com/worldindex/api/poland-data](https://rapidapi.com/worldindex/api/poland-data)
 
-If you'd like to use the API commercially or integrate it with your product, please contact us directly by email for access: contact@contentwriter.co
+Free and commercial plans are available.
+
 
 
