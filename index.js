@@ -15,7 +15,7 @@ const LANGUAGES = [
   "PL", "HU", "GR", "RO", "BG", "EN"
 ];
 
-// Main API endpoint: /poland/:titleEN
+// Endpoint: /poland/:titleEN
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -56,7 +56,6 @@ app.get("/poland/:titleEN", async (req, res) => {
       }
     }
 
-    // Build metadata with optional fields
     const meta = {
       title: fields["TitleEN"] || "",
       description: fields["DescriptionEN"] || "",
@@ -71,17 +70,14 @@ app.get("/poland/:titleEN", async (req, res) => {
       meta.category = fields["CategoryView"][0];
     }
 
-    // Optional additional fields
     if (fields["Definitions"]) meta.definitions = fields["Definitions"];
     if (fields["ResearchName"]) meta.researchName = fields["ResearchName"];
     if (fields["ResearchPurpose"]) meta.researchPurpose = fields["ResearchPurpose"];
     if (fields["Unit"]) meta.unit = fields["Unit"];
 
-    // Translations (excluding EN)
     const translations = {};
     LANGUAGES.forEach((lang) => {
       if (lang === "EN") return;
-
       const titleKey = `Title${lang}`;
       const descriptionKey = `Description${lang}`;
       const dataKey = `Data${lang}`;
@@ -104,19 +100,29 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Endpoint: /titlelist
+// Endpoint: /titlelist with full pagination
 app.get("/titlelist", async (req, res) => {
-  try {
-    const response = await axios.get(
-      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
-      {
-        headers: {
-          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-        }
-      }
-    );
+  let allRecords = [];
+  let offset = null;
 
-    const records = response.data.records
+  try {
+    do {
+      const response = await axios.get(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          },
+          params: offset ? { offset } : {},
+        }
+      );
+
+      const records = response.data.records;
+      allRecords.push(...records);
+      offset = response.data.offset;
+    } while (offset);
+
+    const filteredRecords = allRecords
       .filter((r) => {
         const f = r.fields;
         return f["TitleEN"] && f["TitleEN"].trim() !== "";
@@ -135,7 +141,7 @@ app.get("/titlelist", async (req, res) => {
         };
       });
 
-    res.json(records);
+    res.json(filteredRecords);
   } catch (error) {
     res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
