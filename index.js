@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
 
 const LANGUAGES = [
   "FR", "CZ", "SK", "IT", "CN", "JP", "SI", "LT", "LV", "FI",
@@ -15,7 +16,16 @@ const LANGUAGES = [
   "PL", "HU", "GR", "RO", "BG", "EN"
 ];
 
-// Endpoint: /poland/:titleEN
+// 🔒 Middleware – chroni tylko /poland/:titleEN
+app.use("/poland/:titleEN", (req, res, next) => {
+  const clientKey = req.headers["x-api-key"];
+  if (clientKey !== PRIVATE_API_KEY) {
+    return res.status(403).json({ error: "Forbidden: Invalid or missing API key" });
+  }
+  next();
+});
+
+// 🔐 Zabezpieczony endpoint
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -38,14 +48,14 @@ app.get("/poland/:titleEN", async (req, res) => {
     }
 
     const fields = record.fields;
-
     const data = [];
+
     if (fields["Data"] && fields["DataEN"]) {
-      const headers = fields["DataEN"].split(";").map((h) => h.trim());
+      const headers = fields["DataEN"].split(";").map(h => h.trim());
       const lines = fields["Data"].split("\n");
 
-      for (let i = 0; i < lines.length; i++) {
-        const values = lines[i].split(";").map((v) => v.trim());
+      for (const line of lines) {
+        const values = line.split(";").map(v => v.trim());
         const row = {};
         headers.forEach((key, index) => {
           const val = values[index];
@@ -65,7 +75,7 @@ app.get("/poland/:titleEN", async (req, res) => {
       sourceName: fields["Source Name"] || ""
     };
 
-    if (fields["CategoryView"] && Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
+    if (Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
       meta.category = fields["CategoryView"][0];
     }
 
@@ -81,25 +91,20 @@ app.get("/poland/:titleEN", async (req, res) => {
       const descriptionKey = `Description${lang}`;
       const dataKey = `Data${lang}`;
       const commentKey = `AIComment${lang}`;
-
       if (fields[titleKey]) translations[titleKey] = fields[titleKey];
       if (fields[descriptionKey]) translations[descriptionKey] = fields[descriptionKey];
       if (fields[dataKey]) translations[dataKey] = fields[dataKey];
       if (fields[commentKey]) translations[commentKey] = fields[commentKey];
     });
 
-    res.json({
-      meta,
-      data,
-      translations
-    });
+    res.json({ meta, data, translations });
 
   } catch (error) {
     res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
-// Endpoint: /titlelist — z paginacją i filtrem TitleEN
+// 🟢 Publiczny endpoint
 app.get("/titlelist", async (req, res) => {
   let allRecords = [];
   let offset = null;
@@ -119,33 +124,25 @@ app.get("/titlelist", async (req, res) => {
         }
       );
 
-      const records = response.data.records;
-      allRecords.push(...records);
+      allRecords.push(...response.data.records);
       offset = response.data.offset;
     } while (offset);
 
-    console.log(`Total records fetched from Airtable: ${allRecords.length}`);
-
     const filteredRecords = allRecords
-      .filter((r) => {
-        const f = r.fields;
-        return f["TitleEN"] && f["TitleEN"].trim() !== "";
-      })
-      .map((r) => {
-        const f = r.fields;
-        return {
-          id: r.id,
-          meta: {
-            title: f["TitleEN"] || "",
-            description: f["DescriptionEN"] || "",
-            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
-              ? f["CategoryView"][0]
-              : ""
-          }
-        };
-      });
+      .filter((r) => r.fields["TitleEN"] && r.fields["TitleEN"].trim() !== "")
+      .map((r) => ({
+        id: r.id,
+        meta: {
+          title: r.fields["TitleEN"],
+          description: r.fields["DescriptionEN"] || "",
+          category: Array.isArray(r.fields["CategoryView"]) && r.fields["CategoryView"].length > 0
+            ? r.fields["CategoryView"][0]
+            : ""
+        }
+      }));
 
-    res.json(filteredRecords);
+    res.json({ count: filteredRecords.length, items: filteredRecords });
+
   } catch (error) {
     res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
