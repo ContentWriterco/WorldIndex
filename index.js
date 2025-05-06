@@ -39,7 +39,6 @@ app.get("/poland/:titleEN", async (req, res) => {
 
     const fields = record.fields;
 
-    // Parse multi-column data using DataEN as headers
     const data = [];
     if (fields["Data"] && fields["DataEN"]) {
       const headers = fields["DataEN"].split(";").map((h) => h.trim());
@@ -100,7 +99,7 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Endpoint: /titlelist with full pagination
+// Endpoint: /titlelist — z paginacją i filtrem TitleEN
 app.get("/titlelist", async (req, res) => {
   let allRecords = [];
   let offset = null;
@@ -113,7 +112,10 @@ app.get("/titlelist", async (req, res) => {
           headers: {
             Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           },
-          params: offset ? { offset } : {},
+          params: {
+            offset: offset,
+            pageSize: 100
+          }
         }
       );
 
@@ -121,6 +123,8 @@ app.get("/titlelist", async (req, res) => {
       allRecords.push(...records);
       offset = response.data.offset;
     } while (offset);
+
+    console.log(`Total records fetched from Airtable: ${allRecords.length}`);
 
     const filteredRecords = allRecords
       .filter((r) => {
