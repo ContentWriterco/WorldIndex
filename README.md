@@ -1,10 +1,10 @@
 # WorldIndex API – Poland Dataset
 
-**WorldIndex** is an open data platform designed to present reliable, up-to-date information in a structured, multilingual, and developer-friendly format. This repository provides access to the **Polish datasets** exposed through an open API.
+**WorldIndex** is a project designed to present reliable, up-to-date information in a structured, multilingual, and developer-friendly format. This repository provides access to the **Polish datasets** exposed through an open API.
 
 ### 🌍 What is WorldIndex?
 
-WorldIndex is an interactive platform that aggregates official government data (e.g. from dane.gov.pl, GUS, API DBW and more) and transforms it into clean, unified datasets. The goal is to make long-term trends easier to understand, analyze, and apply — both for people and AI systems.
+WorldIndex is an interactive platform developed by Content Writer LLC that aggregates official government data (e.g. from dane.gov.pl, GUS, API DBW and more) and transforms it into clean, unified datasets. The goal is to make long-term trends easier to understand, analyze, and apply — both for people and AI systems.
 
 Every dataset is available through a consistent API structure and designed to be:
 - Machine-readable
@@ -16,7 +16,7 @@ Every dataset is available through a consistent API structure and designed to be
 
 ### ✅ Features
 
-- **Public Polish datasets** powered by dane.gov.pl
+- **Public Polish datasets** powered by official government sites
 - **Structured API** with metadata, multi-column yearly data, and multilingual descriptions
 - **Auto-refreshing**: API stays up to date as official sources update
 - **Multilingual**: up to 30 language versions per dataset
@@ -38,25 +38,41 @@ Every dataset is available through a consistent API structure and designed to be
 Every dataset endpoint returns:
 
 ```json
+
 {
   "meta": {
-    "title": "Dataset title",
-    "description": "Dataset description",
-    "format": "Column headers",
-    "lastUpdate": "YYYY-MM-DD",
-    ...
+    "title": "Inflation in Poland",
+    "description": "Annual inflation rate (%)",
+    "format": "Year;Value",
+    "lastUpdate": "2025-02-20",
+    "nextUpdateTime": "2025-10-08",
+    "sourceName": "GUS – Department of National Accounts",
+    "category": "Economy"
   },
   "data": [
-    { "year": 2020, "value": 7708, ... },
-    ...
+    { "Data": 2021, "Value": 5.6 },
+    { "Data": 2022, "Value": 13.9 },
+    { "Data": 2023, "Value": 9.6 }
+    // more records...
   ],
   "translations": {
-    "TitleFR": "...",
-    "DescriptionFR": "...",
-    ...
+    "TitleFR": "Inflation",
+    "DescriptionFR": "Taux dʼinflation en Pologne (%)"
+    // more translations...
   }
 }
+
+
 ```
+
+## 📡 API Endpoints
+
+- `GET /poland/{title}` – returns full dataset with metadata, data table, and translations  
+  Example: `https://api.worldindex.co/poland/inflation`
+
+- `GET /titlelist/poland` – returns a list of all available Polish datasets with metadata  
+  Example: `https://api.worldindex.co/titlelist/poland`
+
 
 ## 📄 View Available Datasets
 
@@ -70,7 +86,7 @@ You can explore all available datasets for Poland here:
 To integrate this API with your project, get access through RapidAPI:  
 👉 [https://rapidapi.com/worldindex/api/poland-data](https://rapidapi.com/worldindex/api/poland-data)
 
+✉️ You can also obtain a private API key by writing us at **contact@contentwriter.co**
+
 Free and commercial plans are available.
-
-
 
