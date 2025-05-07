@@ -2,7 +2,7 @@
 
 **WorldIndex** is a project designed to present reliable, up-to-date information in a structured, multilingual, and developer-friendly format. This repository provides access to the **Polish datasets** exposed through an open API.
 
-### 🌍 What is WorldIndex?
+## 🌍 What is WorldIndex?
 
 WorldIndex is an interactive platform developed by Content Writer LLC that aggregates official government data (e.g. from dane.gov.pl, GUS, API DBW and more) and transforms it into clean, unified datasets. The goal is to make long-term trends easier to understand, analyze, and apply — both for people and AI systems.
 
@@ -14,7 +14,7 @@ Every dataset is available through a consistent API structure and designed to be
 
 ---
 
-### ✅ Features
+## ✅ Features
 
 - **Public Polish datasets** powered by official government sites
 - **Structured API** with metadata, multi-column yearly data, and multilingual descriptions
@@ -24,7 +24,7 @@ Every dataset is available through a consistent API structure and designed to be
 
 ---
 
-### 📊 Example Datasets
+## 📊 Example Datasets
 
 - Number of women in the Polish army
 - Inflation and unemployment over time
@@ -33,9 +33,39 @@ Every dataset is available through a consistent API structure and designed to be
 
 ---
 
-### 🔧 API Structure
+## 📡 API Endpoints
 
-Every dataset endpoint returns:
+- `GET /poland/{title}` – returns full dataset with metadata, data table, and translations  
+  Example: `https://api.worldindex.co/poland/inflation`
+
+- `GET /titlelist/poland` – returns a list of all available Polish datasets with metadata  
+  Example: `https://api.worldindex.co/titlelist/poland`
+
+---
+
+## 🔧 API Response Structure
+
+### 📚 Example: GET /titlelist/poland
+
+Returns a list of available datasets with basic metadata.
+
+```json
+  {
+      "id": "rec7umbf8ZbjH31Xs",
+      "meta": {
+        "title": "Inflation",
+        "description": "Inflation rate in Poland (%)",
+        "category": "Economy",
+        "lastUpdate": "2025-02-20",
+        "nextUpdateTime": "2025-10-08"
+      }
+    }
+```
+---
+
+### 📘 Example: GET /poland/{title}
+
+Returns full dataset with metadata, data records, and translations.
 
 ```json
 
@@ -62,16 +92,8 @@ Every dataset endpoint returns:
   }
 }
 
-
 ```
-
-## 📡 API Endpoints
-
-- `GET /poland/{title}` – returns full dataset with metadata, data table, and translations  
-  Example: `https://api.worldindex.co/poland/inflation`
-
-- `GET /titlelist/poland` – returns a list of all available Polish datasets with metadata  
-  Example: `https://api.worldindex.co/titlelist/poland`
+---
 
 
 ## 📄 View Available Datasets
