@@ -19,7 +19,7 @@ Every dataset is available through a consistent API structure and designed to be
 - **Public Polish datasets** powered by official government sites
 - **Structured API** with metadata, multi-column yearly data, and multilingual descriptions
 - **Auto-refreshing**: API stays up to date as official sources update
-- **Multilingual**: up to 30 language versions per dataset
+- **Multilingual**: 25 language versions per dataset
 
 ---
 
