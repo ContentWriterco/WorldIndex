@@ -20,7 +20,6 @@ Every dataset is available through a consistent API structure and designed to be
 - **Structured API** with metadata, multi-column yearly data, and multilingual descriptions
 - **Auto-refreshing**: API stays up to date as official sources update
 - **Multilingual**: up to 30 language versions per dataset
-- **Free and open** to use for non-commercial projects
 
 ---
 
