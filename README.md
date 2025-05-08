@@ -70,7 +70,7 @@ Returns full dataset with metadata, data records, and translations.
 
 {
   "meta": {
-    "title": "Inflation in Poland",
+    "title": "Inflation",
     "description": "Annual inflation rate (%)",
     "format": "Year;Value",
     "lastUpdate": "2025-02-20",
