@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const AIRTABLE_CATEGORIES_TABLE_NAME = process.env.AIRTABLE_CATEGORIES_TABLE_NAME;
 const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
 
 const LANGUAGES = [
@@ -16,7 +17,7 @@ const LANGUAGES = [
   "PL", "HU", "GR", "RO", "BG", "EN"
 ];
 
-// 🔒 Middleware – chroni tylko /poland/:titleEN
+// Middleware to protect /poland/:titleEN
 app.use("/poland/:titleEN", (req, res, next) => {
   const clientKey = req.headers["x-api-key"];
   if (clientKey !== PRIVATE_API_KEY) {
@@ -25,7 +26,7 @@ app.use("/poland/:titleEN", (req, res, next) => {
   next();
 });
 
-// 🔐 Zabezpieczony endpoint: /poland/:titleEN
+// Protected endpoint: /poland/:titleEN
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -37,14 +38,14 @@ app.get("/poland/:titleEN", async (req, res) => {
           Authorization: `Bearer ${AIRTABLE_API_KEY}`,
         },
         params: {
-          filterByFormula: `LOWER({TitleEN}) = "${titleEN.toLowerCase()}"`
+          filterByFormula: `LOWER({TitleEN}) = \"${titleEN.toLowerCase()}\"`
         }
       }
     );
 
     const record = response.data.records[0];
     if (!record) {
-      return res.status(404).json({ error: `No data found for "${titleEN}"` });
+      return res.status(404).json({ error: `No data found for \"${titleEN}\"` });
     }
 
     const fields = record.fields;
@@ -104,8 +105,12 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// 🟢 Publiczny endpoint: /titlelist/poland
+// Public endpoint: /titlelist/poland
 app.get("/titlelist/poland", async (req, res) => {
+  const lang = (req.query.lang || "EN").toUpperCase();
+  const titleKey = `Title${lang}`;
+  const descKey = `Description${lang}`;
+
   let allRecords = [];
   let offset = null;
 
@@ -135,11 +140,9 @@ app.get("/titlelist/poland", async (req, res) => {
         return {
           id: r.id,
           meta: {
-            title: f["TitleEN"],
-            description: f["DescriptionEN"] || "",
-            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
-              ? f["CategoryView"][0]
-              : "",
+            title: f[titleKey] || f["TitleEN"],
+            description: f[descKey] || f["DescriptionEN"] || "",
+            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0 ? f["CategoryView"][0] : "",
             lastUpdate: f["UpdatedThere"] || "",
             nextUpdateTime: f["NextUpdateTime"] || ""
           }
@@ -153,9 +156,13 @@ app.get("/titlelist/poland", async (req, res) => {
   }
 });
 
-// 🟡 Nowy endpoint: /titlelist/poland/:category
+// Public endpoint: /titlelist/poland/:category
 app.get("/titlelist/poland/:category", async (req, res) => {
   const categoryParam = req.params.category.toLowerCase();
+  const lang = (req.query.lang || "EN").toUpperCase();
+  const titleKey = `Title${lang}`;
+  const descKey = `Description${lang}`;
+
   let allRecords = [];
   let offset = null;
 
@@ -181,25 +188,17 @@ app.get("/titlelist/poland/:category", async (req, res) => {
     const filteredRecords = allRecords
       .filter((r) => {
         const f = r.fields;
-        const category = Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
-          ? f["CategoryView"][0].toLowerCase()
-          : "";
-        return (
-          f["TitleEN"] &&
-          f["TitleEN"].trim() !== "" &&
-          category === categoryParam
-        );
+        const category = Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0 ? f["CategoryView"][0].toLowerCase() : "";
+        return f["TitleEN"] && f["TitleEN"].trim() !== "" && category === categoryParam;
       })
       .map((r) => {
         const f = r.fields;
         return {
           id: r.id,
           meta: {
-            title: f["TitleEN"],
-            description: f["DescriptionEN"] || "",
-            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
-              ? f["CategoryView"][0]
-              : "",
+            title: f[titleKey] || f["TitleEN"],
+            description: f[descKey] || f["DescriptionEN"] || "",
+            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0 ? f["CategoryView"][0] : "",
             lastUpdate: f["UpdatedThere"] || "",
             nextUpdateTime: f["NextUpdateTime"] || ""
           }
@@ -213,39 +212,56 @@ app.get("/titlelist/poland/:category", async (req, res) => {
   }
 });
 
-// 🔵 Bonus: endpoint /categories/poland – zwraca wszystkie unikalne kategorie
+// Public endpoint: /categories/poland with ?lang= support
 app.get("/categories/poland", async (req, res) => {
-  let allRecords = [];
-  let offset = null;
-  const categorySet = new Set();
+  const lang = (req.query.lang || "EN").toUpperCase();
+  const titleField = `Title${lang}`;
+  let categoryIds = new Set();
+  let allCategoryRecords = [];
 
   try {
+    let offset = null;
     do {
       const response = await axios.get(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
-          headers: {
-            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-          },
-          params: {
-            offset: offset,
-            pageSize: 100
-          }
+          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+          params: { offset, pageSize: 100 }
         }
       );
 
-      allRecords.push(...response.data.records);
+      for (const record of response.data.records) {
+        const linked = record.fields["CategoryView"];
+        if (Array.isArray(linked)) {
+          linked.forEach(id => categoryIds.add(id));
+        }
+      }
+
       offset = response.data.offset;
     } while (offset);
 
-    allRecords.forEach((r) => {
-      const f = r.fields;
-      if (Array.isArray(f["CategoryView"])) {
-        f["CategoryView"].forEach(c => categorySet.add(c));
-      }
+    const allIds = Array.from(categoryIds);
+    for (let i = 0; i < allIds.length; i += 10) {
+      const chunk = allIds.slice(i, i + 10);
+      const response = await axios.get(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_CATEGORIES_TABLE_NAME}`,
+        {
+          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+          params: { "filterByFormula": `OR(${chunk.map(id => `RECORD_ID()='${id}'`).join(",")})` }
+        }
+      );
+      allCategoryRecords.push(...response.data.records);
+    }
+
+    const categories = allCategoryRecords.map(cat => {
+      const f = cat.fields;
+      return {
+        id: cat.id,
+        title: f[titleField] || f["TitleEN"] || "(no title)"
+      };
     });
 
-    res.json({ categories: Array.from(categorySet).sort() });
+    res.json({ count: categories.length, categories });
 
   } catch (error) {
     res.status(500).json({ error: `Server error: ${error.toString()}` });
