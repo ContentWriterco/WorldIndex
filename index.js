@@ -17,7 +17,6 @@ const LANGUAGES = [
   "PL", "HU", "GR", "RO", "BG", "EN"
 ];
 
-// Middleware to protect /poland/:titleEN
 app.use("/poland/:titleEN", (req, res, next) => {
   const clientKey = req.headers["x-api-key"];
   if (clientKey !== PRIVATE_API_KEY) {
@@ -26,7 +25,33 @@ app.use("/poland/:titleEN", (req, res, next) => {
   next();
 });
 
-// Protected endpoint: /poland/:titleEN
+async function fetchCategoryNames(categoryIds, lang) {
+  const titleField = `Title${lang}`;
+  const categories = {};
+
+  try {
+    for (let i = 0; i < categoryIds.length; i += 10) {
+      const chunk = categoryIds.slice(i, i + 10);
+      const response = await axios.get(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_CATEGORIES_TABLE_NAME}`,
+        {
+          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+          params: {
+            filterByFormula: `OR(${chunk.map(id => `RECORD_ID()='${id}'`).join(",")})`
+          }
+        }
+      );
+      response.data.records.forEach(record => {
+        categories[record.id] = record.fields[titleField] || record.fields["TitleEN"] || "(no title)";
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching categories:", error.toString());
+  }
+
+  return categories;
+}
+
 app.get("/poland/:titleEN", async (req, res) => {
   const { titleEN } = req.params;
 
@@ -34,9 +59,7 @@ app.get("/poland/:titleEN", async (req, res) => {
     const response = await axios.get(
       `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
       {
-        headers: {
-          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-        },
+        headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
         params: {
           filterByFormula: `LOWER({TitleEN}) = \"${titleEN.toLowerCase()}\"`
         }
@@ -44,17 +67,17 @@ app.get("/poland/:titleEN", async (req, res) => {
     );
 
     const record = response.data.records[0];
-    if (!record) {
-      return res.status(404).json({ error: `No data found for \"${titleEN}\"` });
-    }
+    if (!record) return res.status(404).json({ error: `No data found for \"${titleEN}\"` });
 
     const fields = record.fields;
-    const data = [];
+    const lang = (req.query.lang || "EN").toUpperCase();
+    const titleKey = `Title${lang}`;
+    const descKey = `Description${lang}`;
 
+    const data = [];
     if (fields["Data"] && fields["DataEN"]) {
       const headers = fields["DataEN"].split(";").map(h => h.trim());
       const lines = fields["Data"].split("\n");
-
       for (const line of lines) {
         const values = line.split(";").map(v => v.trim());
         const row = {};
@@ -66,19 +89,23 @@ app.get("/poland/:titleEN", async (req, res) => {
       }
     }
 
+    let category = "";
+    const catId = Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0 ? fields["CategoryView"][0] : null;
+    if (catId) {
+      const categoryMap = await fetchCategoryNames([catId], lang);
+      category = categoryMap[catId] || "";
+    }
+
     const meta = {
-      title: fields["TitleEN"] || "",
-      description: fields["DescriptionEN"] || "",
+      title: fields[titleKey] || fields["TitleEN"] || "",
+      description: fields[descKey] || fields["DescriptionEN"] || "",
       updateFrequency: fields["UpdateFrequency"] || "",
       format: fields["DataEN"] || "",
       lastUpdate: fields["UpdatedThere"] || "",
       nextUpdateTime: fields["NextUpdateTime"] || "",
-      sourceName: fields["Source Name"] || ""
+      sourceName: fields["Source Name"] || "",
+      category
     };
-
-    if (Array.isArray(fields["CategoryView"]) && fields["CategoryView"].length > 0) {
-      meta.category = fields["CategoryView"][0];
-    }
 
     if (fields["Definitions"]) meta.definitions = fields["Definitions"];
     if (fields["ResearchName"]) meta.researchName = fields["ResearchName"];
@@ -86,16 +113,16 @@ app.get("/poland/:titleEN", async (req, res) => {
     if (fields["Unit"]) meta.unit = fields["Unit"];
 
     const translations = {};
-    LANGUAGES.forEach((lang) => {
-      if (lang === "EN") return;
-      const titleKey = `Title${lang}`;
-      const descriptionKey = `Description${lang}`;
-      const dataKey = `Data${lang}`;
-      const commentKey = `AIComment${lang}`;
-      if (fields[titleKey]) translations[titleKey] = fields[titleKey];
-      if (fields[descriptionKey]) translations[descriptionKey] = fields[descriptionKey];
-      if (fields[dataKey]) translations[dataKey] = fields[dataKey];
-      if (fields[commentKey]) translations[commentKey] = fields[commentKey];
+    LANGUAGES.forEach((langCode) => {
+      if (langCode === "EN") return;
+      const title = fields[`Title${langCode}`];
+      const desc = fields[`Description${langCode}`];
+      const dataField = fields[`Data${langCode}`];
+      const comment = fields[`AIComment${langCode}`];
+      if (title) translations[`Title${langCode}`] = title;
+      if (desc) translations[`Description${langCode}`] = desc;
+      if (dataField) translations[`Data${langCode}`] = dataField;
+      if (comment) translations[`AIComment${langCode}`] = comment;
     });
 
     res.json({ meta, data, translations });
@@ -105,7 +132,6 @@ app.get("/poland/:titleEN", async (req, res) => {
   }
 });
 
-// Public endpoint: /titlelist/poland
 app.get("/titlelist/poland", async (req, res) => {
   const lang = (req.query.lang || "EN").toUpperCase();
   const titleKey = `Title${lang}`;
@@ -113,106 +139,55 @@ app.get("/titlelist/poland", async (req, res) => {
 
   let allRecords = [];
   let offset = null;
+  const categoryIds = new Set();
 
   try {
     do {
       const response = await axios.get(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
-          headers: {
-            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-          },
-          params: {
-            offset: offset,
-            pageSize: 100
-          }
+          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+          params: { offset, pageSize: 100 }
         }
       );
 
-      allRecords.push(...response.data.records);
+      response.data.records.forEach(record => {
+        const f = record.fields;
+        if (Array.isArray(f["CategoryView"])) {
+          categoryIds.add(f["CategoryView"][0]);
+        }
+        allRecords.push(record);
+      });
+
       offset = response.data.offset;
     } while (offset);
 
-    const filteredRecords = allRecords
-      .filter((r) => r.fields["TitleEN"] && r.fields["TitleEN"].trim() !== "")
-      .map((r) => {
+    const categoryMap = await fetchCategoryNames(Array.from(categoryIds), lang);
+
+    const items = allRecords
+      .filter(r => r.fields["TitleEN"] && r.fields["TitleEN"].trim() !== "")
+      .map(r => {
         const f = r.fields;
+        const catId = Array.isArray(f["CategoryView"]) ? f["CategoryView"][0] : null;
         return {
           id: r.id,
           meta: {
             title: f[titleKey] || f["TitleEN"],
             description: f[descKey] || f["DescriptionEN"] || "",
-            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0 ? f["CategoryView"][0] : "",
+            category: catId ? categoryMap[catId] || "" : "",
             lastUpdate: f["UpdatedThere"] || "",
             nextUpdateTime: f["NextUpdateTime"] || ""
           }
         };
       });
 
-    res.json({ count: filteredRecords.length, items: filteredRecords });
+    res.json({ count: items.length, items });
 
   } catch (error) {
     res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
-// Public endpoint: /titlelist/poland/:category
-app.get("/titlelist/poland/:category", async (req, res) => {
-  const categoryParam = req.params.category.toLowerCase();
-  const lang = (req.query.lang || "EN").toUpperCase();
-  const titleKey = `Title${lang}`;
-  const descKey = `Description${lang}`;
-
-  let allRecords = [];
-  let offset = null;
-
-  try {
-    do {
-      const response = await axios.get(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
-        {
-          headers: {
-            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-          },
-          params: {
-            offset: offset,
-            pageSize: 100
-          }
-        }
-      );
-
-      allRecords.push(...response.data.records);
-      offset = response.data.offset;
-    } while (offset);
-
-    const filteredRecords = allRecords
-      .filter((r) => {
-        const f = r.fields;
-        const category = Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0 ? f["CategoryView"][0].toLowerCase() : "";
-        return f["TitleEN"] && f["TitleEN"].trim() !== "" && category === categoryParam;
-      })
-      .map((r) => {
-        const f = r.fields;
-        return {
-          id: r.id,
-          meta: {
-            title: f[titleKey] || f["TitleEN"],
-            description: f[descKey] || f["DescriptionEN"] || "",
-            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0 ? f["CategoryView"][0] : "",
-            lastUpdate: f["UpdatedThere"] || "",
-            nextUpdateTime: f["NextUpdateTime"] || ""
-          }
-        };
-      });
-
-    res.json({ count: filteredRecords.length, items: filteredRecords });
-
-  } catch (error) {
-    res.status(500).json({ error: `Server error: ${error.toString()}` });
-  }
-});
-
-// Restored version of /categories/poland: returns unique raw categories
 app.get("/categories/poland", async (req, res) => {
   let allRecords = [];
   let offset = null;
@@ -223,13 +198,8 @@ app.get("/categories/poland", async (req, res) => {
       const response = await axios.get(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
-          headers: {
-            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-          },
-          params: {
-            offset: offset,
-            pageSize: 100
-          }
+          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+          params: { offset, pageSize: 100 }
         }
       );
 
@@ -237,7 +207,7 @@ app.get("/categories/poland", async (req, res) => {
       offset = response.data.offset;
     } while (offset);
 
-    allRecords.forEach((r) => {
+    allRecords.forEach(r => {
       const f = r.fields;
       if (Array.isArray(f["CategoryView"])) {
         f["CategoryView"].forEach(c => categorySet.add(c));
