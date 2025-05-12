@@ -49,7 +49,6 @@ app.use("/poland/:titleEN", (req, res, next) => {
 app.get("/poland/:titleEN", async (req, res) => {
   const titleEN = req.params.titleEN.toLowerCase();
   try {
-    // pobierz rekord główny
     const mainResp = await axios.get(
       `https://api.airtable.com/v0/${BASE}/${MAIN}`,
       {
@@ -65,7 +64,6 @@ app.get("/poland/:titleEN", async (req, res) => {
     }
     const f = record.fields;
 
-    // parsowanie Data/DataEN
     const data = [];
     if (f.Data && f.DataEN) {
       const heads = f.DataEN.split(";").map(s => s.trim());
@@ -80,7 +78,6 @@ app.get("/poland/:titleEN", async (req, res) => {
       });
     }
 
-    // budowa meta
     const meta = {
       title:           f.TitleEN || "",
       description:     f.DescriptionEN || "",
@@ -94,11 +91,9 @@ app.get("/poland/:titleEN", async (req, res) => {
       if (f[k]) meta[k.charAt(0).toLowerCase()+k.slice(1)] = f[k];
     });
 
-    // załaduj raz wszystkie kategorie
     const catMap = await loadAllCategories();
     if (Array.isArray(f.CategorySelect) && f.CategorySelect.length) {
       const catFields = catMap[f.CategorySelect[0]];
-      // pełne tłumaczenia
       const catTrans = { id: f.CategorySelect[0] };
       LANGUAGES.forEach(lang => {
         const key = lang==="EN"?"Secondary":`Secondary${lang}`;
@@ -107,7 +102,6 @@ app.get("/poland/:titleEN", async (req, res) => {
       meta.category = catTrans;
     }
 
-    // tłumaczenia innych pól
     const translations = {};
     LANGUAGES.forEach(lang => {
       if (lang==="EN") return;
@@ -130,7 +124,7 @@ app.get("/titlelist/poland", async (req, res) => {
   const descKey  = `Description${lang}`;
 
   try {
-    // 1) pobierz wszystkie rekordy główne
+    // pobierz wszystkie rekordy główne
     let all = [], offset = null;
     do {
       const r = await axios.get(
@@ -144,10 +138,9 @@ app.get("/titlelist/poland", async (req, res) => {
       offset = r.data.offset;
     } while (offset);
 
-    // 2) pobierz wszystkie kategorie raz
     const catMap = await loadAllCategories();
 
-    // 3) buduj items
+    // buduj items
     const items = all
       .filter(r => r.fields.TitleEN && r.fields.TitleEN.trim())
       .map(r => {
@@ -170,6 +163,13 @@ app.get("/titlelist/poland", async (req, res) => {
         };
       });
 
+    // sortujemy malejąco po lastUpdate
+    items.sort((a, b) => {
+      const da = new Date(a.meta.lastUpdate);
+      const db = new Date(b.meta.lastUpdate);
+      return db - da;
+    });
+
     res.json({ count: items.length, items });
   } catch (e) {
     res.status(500).json({ error: e.toString() });
@@ -184,7 +184,7 @@ app.get("/titlelist/poland/:category", async (req, res) => {
   const catParam = req.params.category.toLowerCase();
 
   try {
-    // 1) wszystkie główne rekordy
+    // pobierz wszystkie rekordy główne
     let all = [], offset = null;
     do {
       const r = await axios.get(
@@ -198,10 +198,9 @@ app.get("/titlelist/poland/:category", async (req, res) => {
       offset = r.data.offset;
     } while (offset);
 
-    // 2) pobierz kategorie
     const catMap = await loadAllCategories();
 
-    // 3) filtr i mapowanie
+    // filtr i mapowanie
     const items = all
       .filter(r => {
         const cv = r.fields.CategoryView;
@@ -229,6 +228,13 @@ app.get("/titlelist/poland/:category", async (req, res) => {
         };
       });
 
+    // sortujemy malejąco po lastUpdate
+    items.sort((a, b) => {
+      const da = new Date(a.meta.lastUpdate);
+      const db = new Date(b.meta.lastUpdate);
+      return db - da;
+    });
+
     res.json({ count: items.length, items });
   } catch (e) {
     res.status(500).json({ error: e.toString() });
@@ -246,7 +252,6 @@ app.get("/categories/poland", async (req, res) => {
     let categories = [];
     let offset = null;
 
-    // Paginate po tabeli Categories, tylko rekordy z Primary Category = "Poland"
     do {
       const r = await axios.get(
         `https://api.airtable.com/v0/${BASE}/${CATS}`,
@@ -259,26 +264,20 @@ app.get("/categories/poland", async (req, res) => {
           }
         }
       );
-
       r.data.records.forEach(rec => {
         const f = rec.fields;
         const name = f[fieldKey] || f["Secondary"];
         if (name) categories.push(name);
       });
-
       offset = r.data.offset;
     } while (offset);
 
-    // deduplikacja i sortowanie
     categories = Array.from(new Set(categories)).sort();
 
     res.json({ count: categories.length, categories });
-
   } catch (e) {
     res.status(500).json({ error: e.toString() });
   }
 });
-
-
 
 app.listen(PORT, () => console.log(`API on port ${PORT}`));
