@@ -212,56 +212,39 @@ app.get("/titlelist/poland/:category", async (req, res) => {
   }
 });
 
-// Public endpoint: /categories/poland with ?lang= support
+// Restored version of /categories/poland: returns unique raw categories
 app.get("/categories/poland", async (req, res) => {
-  const lang = (req.query.lang || "EN").toUpperCase();
-  const titleField = `Title${lang}`;
-  let categoryIds = new Set();
-  let allCategoryRecords = [];
+  let allRecords = [];
+  let offset = null;
+  const categorySet = new Set();
 
   try {
-    let offset = null;
     do {
       const response = await axios.get(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
-          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
-          params: { offset, pageSize: 100 }
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          },
+          params: {
+            offset: offset,
+            pageSize: 100
+          }
         }
       );
 
-      for (const record of response.data.records) {
-        const linked = record.fields["CategoryView"];
-        if (Array.isArray(linked)) {
-          linked.forEach(id => categoryIds.add(id));
-        }
-      }
-
+      allRecords.push(...response.data.records);
       offset = response.data.offset;
     } while (offset);
 
-    const allIds = Array.from(categoryIds);
-    for (let i = 0; i < allIds.length; i += 10) {
-      const chunk = allIds.slice(i, i + 10);
-      const response = await axios.get(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_CATEGORIES_TABLE_NAME}`,
-        {
-          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
-          params: { "filterByFormula": `OR(${chunk.map(id => `RECORD_ID()='${id}'`).join(",")})` }
-        }
-      );
-      allCategoryRecords.push(...response.data.records);
-    }
-
-    const categories = allCategoryRecords.map(cat => {
-      const f = cat.fields;
-      return {
-        id: cat.id,
-        title: f[titleField] || f["TitleEN"] || "(no title)"
-      };
+    allRecords.forEach((r) => {
+      const f = r.fields;
+      if (Array.isArray(f["CategoryView"])) {
+        f["CategoryView"].forEach(c => categorySet.add(c));
+      }
     });
 
-    res.json({ count: categories.length, categories });
+    res.json({ count: categorySet.size, categories: Array.from(categorySet).sort() });
 
   } catch (error) {
     res.status(500).json({ error: `Server error: ${error.toString()}` });
