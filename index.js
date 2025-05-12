@@ -153,6 +153,105 @@ app.get("/titlelist/poland", async (req, res) => {
   }
 });
 
+// 🟡 Nowy endpoint: /titlelist/poland/:category
+app.get("/titlelist/poland/:category", async (req, res) => {
+  const categoryParam = req.params.category.toLowerCase();
+  let allRecords = [];
+  let offset = null;
+
+  try {
+    do {
+      const response = await axios.get(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          },
+          params: {
+            offset: offset,
+            pageSize: 100
+          }
+        }
+      );
+
+      allRecords.push(...response.data.records);
+      offset = response.data.offset;
+    } while (offset);
+
+    const filteredRecords = allRecords
+      .filter((r) => {
+        const f = r.fields;
+        const category = Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+          ? f["CategoryView"][0].toLowerCase()
+          : "";
+        return (
+          f["TitleEN"] &&
+          f["TitleEN"].trim() !== "" &&
+          category === categoryParam
+        );
+      })
+      .map((r) => {
+        const f = r.fields;
+        return {
+          id: r.id,
+          meta: {
+            title: f["TitleEN"],
+            description: f["DescriptionEN"] || "",
+            category: Array.isArray(f["CategoryView"]) && f["CategoryView"].length > 0
+              ? f["CategoryView"][0]
+              : "",
+            lastUpdate: f["UpdatedThere"] || "",
+            nextUpdateTime: f["NextUpdateTime"] || ""
+          }
+        };
+      });
+
+    res.json({ count: filteredRecords.length, items: filteredRecords });
+
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
+  }
+});
+
+// 🔵 Bonus: endpoint /categories/poland – zwraca wszystkie unikalne kategorie
+app.get("/categories/poland", async (req, res) => {
+  let allRecords = [];
+  let offset = null;
+  const categorySet = new Set();
+
+  try {
+    do {
+      const response = await axios.get(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          },
+          params: {
+            offset: offset,
+            pageSize: 100
+          }
+        }
+      );
+
+      allRecords.push(...response.data.records);
+      offset = response.data.offset;
+    } while (offset);
+
+    allRecords.forEach((r) => {
+      const f = r.fields;
+      if (Array.isArray(f["CategoryView"])) {
+        f["CategoryView"].forEach(c => categorySet.add(c));
+      }
+    });
+
+    res.json({ categories: Array.from(categorySet).sort() });
+
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`API is running on port ${PORT}`);
 });
