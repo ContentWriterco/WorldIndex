@@ -237,7 +237,7 @@ app.get("/titlelist/poland/:category", async (req, res) => {
 
 // === Public endpoint: /categories/poland ===
 app.get("/categories/poland", async (req, res) => {
-  const lang    = (req.query.lang || "EN").toUpperCase();
+  const lang     = (req.query.lang || "EN").toUpperCase();
   const fieldKey = lang === "EN"
     ? "Secondary"
     : `Secondary${lang}`;
@@ -246,12 +246,12 @@ app.get("/categories/poland", async (req, res) => {
     let categories = [];
     let offset = null;
 
-    // Paginate po tabeli Categories, tylko dla Primary Category = "Poland"
+    // Paginate po tabeli Categories, tylko rekordy z Primary Category = "Poland"
     do {
       const r = await axios.get(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_CATEGORIES_TABLE_NAME}`,
+        `https://api.airtable.com/v0/${BASE}/${CATS}`,
         {
-          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+          headers: { Authorization: `Bearer ${KEY}` },
           params: {
             offset,
             pageSize: 100,
@@ -262,7 +262,6 @@ app.get("/categories/poland", async (req, res) => {
 
       r.data.records.forEach(rec => {
         const f = rec.fields;
-        // fallback na angielski
         const name = f[fieldKey] || f["Secondary"];
         if (name) categories.push(name);
       });
@@ -270,14 +269,16 @@ app.get("/categories/poland", async (req, res) => {
       offset = r.data.offset;
     } while (offset);
 
-    // unikalne, posortowane
+    // deduplikacja i sortowanie
     categories = Array.from(new Set(categories)).sort();
 
     res.json({ count: categories.length, categories });
+
   } catch (e) {
     res.status(500).json({ error: e.toString() });
   }
 });
+
 
 
 app.listen(PORT, () => console.log(`API on port ${PORT}`));
