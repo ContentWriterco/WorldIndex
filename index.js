@@ -32,20 +32,20 @@ app.get("/poland/:titleEN", async (req, res) => {
 
   try {
     const response = await axios.get(
-      https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME},
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
       {
         headers: {
-          Authorization: Bearer ${AIRTABLE_API_KEY},
+          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
         },
         params: {
-          filterByFormula: LOWER({TitleEN}) = \"${titleEN.toLowerCase()}\"
+          filterByFormula: `LOWER({TitleEN}) = "${titleEN.toLowerCase()}"`
         }
       }
     );
 
     const record = response.data.records[0];
     if (!record) {
-      return res.status(404).json({ error: No data found for \"${titleEN}\" });
+      return res.status(404).json({ error: `No data found for "${titleEN}"` });
     }
 
     const fields = record.fields;
@@ -88,10 +88,10 @@ app.get("/poland/:titleEN", async (req, res) => {
     const translations = {};
     LANGUAGES.forEach((lang) => {
       if (lang === "EN") return;
-      const titleKey = Title${lang};
-      const descriptionKey = Description${lang};
-      const dataKey = Data${lang};
-      const commentKey = AIComment${lang};
+      const titleKey = `Title${lang}`;
+      const descriptionKey = `Description${lang}`;
+      const dataKey = `Data${lang}`;
+      const commentKey = `AIComment${lang}`;
       if (fields[titleKey]) translations[titleKey] = fields[titleKey];
       if (fields[descriptionKey]) translations[descriptionKey] = fields[descriptionKey];
       if (fields[dataKey]) translations[dataKey] = fields[dataKey];
@@ -101,15 +101,15 @@ app.get("/poland/:titleEN", async (req, res) => {
     res.json({ meta, data, translations });
 
   } catch (error) {
-    res.status(500).json({ error: Server error: ${error.toString()} });
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
 // Public endpoint: /titlelist/poland
 app.get("/titlelist/poland", async (req, res) => {
   const lang = (req.query.lang || "EN").toUpperCase();
-  const titleKey = Title${lang};
-  const descKey = Description${lang};
+  const titleKey = `Title${lang}`;
+  const descKey = `Description${lang}`;
 
   let allRecords = [];
   let offset = null;
@@ -117,10 +117,10 @@ app.get("/titlelist/poland", async (req, res) => {
   try {
     do {
       const response = await axios.get(
-        https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME},
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
           headers: {
-            Authorization: Bearer ${AIRTABLE_API_KEY},
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           },
           params: {
             offset: offset,
@@ -152,7 +152,7 @@ app.get("/titlelist/poland", async (req, res) => {
     res.json({ count: filteredRecords.length, items: filteredRecords });
 
   } catch (error) {
-    res.status(500).json({ error: Server error: ${error.toString()} });
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
@@ -160,8 +160,8 @@ app.get("/titlelist/poland", async (req, res) => {
 app.get("/titlelist/poland/:category", async (req, res) => {
   const categoryParam = req.params.category.toLowerCase();
   const lang = (req.query.lang || "EN").toUpperCase();
-  const titleKey = Title${lang};
-  const descKey = Description${lang};
+  const titleKey = `Title${lang}`;
+  const descKey = `Description${lang}`;
 
   let allRecords = [];
   let offset = null;
@@ -169,10 +169,10 @@ app.get("/titlelist/poland/:category", async (req, res) => {
   try {
     do {
       const response = await axios.get(
-        https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME},
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
           headers: {
-            Authorization: Bearer ${AIRTABLE_API_KEY},
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           },
           params: {
             offset: offset,
@@ -208,7 +208,7 @@ app.get("/titlelist/poland/:category", async (req, res) => {
     res.json({ count: filteredRecords.length, items: filteredRecords });
 
   } catch (error) {
-    res.status(500).json({ error: Server error: ${error.toString()} });
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
@@ -221,10 +221,10 @@ app.get("/categories/poland", async (req, res) => {
   try {
     do {
       const response = await axios.get(
-        https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME},
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
           headers: {
-            Authorization: Bearer ${AIRTABLE_API_KEY},
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           },
           params: {
             offset: offset,
@@ -247,10 +247,10 @@ app.get("/categories/poland", async (req, res) => {
     res.json({ count: categorySet.size, categories: Array.from(categorySet).sort() });
 
   } catch (error) {
-    res.status(500).json({ error: Server error: ${error.toString()} });
+    res.status(500).json({ error: `Server error: ${error.toString()}` });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(API is running on port ${PORT});
+  console.log(`API is running on port ${PORT}`);
 });
