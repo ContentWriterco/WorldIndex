@@ -38,10 +38,14 @@ async function loadAllCategories() {
 }
 
 
-// === /poland/:titleEN (protected) ===
+// === /poland/:titleEN ===
 app.get("/poland/:titleEN", async (req, res) => {
   const titleEN = req.params.titleEN.toLowerCase();
+  const lang = (req.query.lang || "EN").toUpperCase();
+  const langSuffix = lang === "EN" ? "" : lang;
+
   try {
+    // Pobierz rekord z głównej tabeli (Poland)
     const mainResp = await axios.get(
       `https://api.airtable.com/v0/${BASE}/${MAIN}`,
       {
@@ -57,49 +61,72 @@ app.get("/poland/:titleEN", async (req, res) => {
     }
     const f = record.fields;
 
+    // Parsuj dane z kolumny Data/DataEN
     const data = [];
     if (f.Data && f.DataEN) {
       const heads = f.DataEN.split(";").map(s => s.trim());
       f.Data.split("\n").forEach(line => {
         const vals = line.split(";").map(s => s.trim());
         const row = {};
-        heads.forEach((h,i) => {
+        heads.forEach((h, i) => {
           const v = vals[i];
-          row[h==="Year"?"year":h] = isNaN(v)?v:parseFloat(v);
+          row[h === "Year" ? "year" : h] = isNaN(v) ? v : parseFloat(v);
         });
         data.push(row);
       });
     }
 
+    // Podstawowe pole meta
     const meta = {
       title:           f.TitleEN || "",
       description:     f.DescriptionEN || "",
       updateFrequency: f.UpdateFrequency || "",
       format:          f.DataEN || "",
       lastUpdate:      f.UpdatedThere || "",
-      nextUpdateTime:  f.NextUpdateTime || "",
-      sourceName:      f["Source Name"] || ""
+      nextUpdateTime:  f.NextUpdateTime || ""
     };
-    ["Definitions","ResearchName","ResearchPurpose","Unit"].forEach(k => {
-      if (f[k]) meta[k.charAt(0).toLowerCase()+k.slice(1)] = f[k];
-    });
 
+    // Pobierz dane z powiązanej tabeli Metadata przez pole `linkedto`
+    if (Array.isArray(f.linkedto) && f.linkedto.length > 0) {
+      const metadataId = f.linkedto[0];
+      try {
+        const metaResp = await axios.get(
+          `https://api.airtable.com/v0/${BASE}/Metadata/${metadataId}`,
+          {
+            headers: { Authorization: `Bearer ${KEY}` }
+          }
+        );
+        const m = metaResp.data.fields;
+
+        meta.researchName    = m[`ResearchName${langSuffix}`]    || "";
+        meta.researchPurpose = m[`ResearchPurpose${langSuffix}`] || "";
+        meta.definitions     = m[`Definitions${langSuffix}`]     || "";
+        meta.methodology     = m[`Methodology${langSuffix}`]     || "";
+        meta.sourceName      = m[`Source Name${langSuffix}`]     || "";
+        meta.unit            = m[`Unit${langSuffix}`]            || "";
+      } catch (e) {
+        console.error("Błąd przy pobieraniu Metadata:", e.toString());
+      }
+    }
+
+    // Pobierz mapę kategorii
     const catMap = await loadAllCategories();
     if (Array.isArray(f.CategorySelect) && f.CategorySelect.length) {
       const catFields = catMap[f.CategorySelect[0]];
       const catTrans = { id: f.CategorySelect[0] };
-      LANGUAGES.forEach(lang => {
-        const key = lang==="EN"?"Secondary":`Secondary${lang}`;
-        if (catFields[key]) catTrans[lang.toLowerCase()] = catFields[key];
+      LANGUAGES.forEach(l => {
+        const key = l === "EN" ? "Secondary" : `Secondary${l}`;
+        if (catFields[key]) catTrans[l.toLowerCase()] = catFields[key];
       });
       meta.category = catTrans;
     }
 
+    // Tłumaczenia
     const translations = {};
-    LANGUAGES.forEach(lang => {
-      if (lang==="EN") return;
-      ["Title","Description","Data","AIComment"].forEach(pref => {
-        const key = `${pref}${lang}`;
+    LANGUAGES.forEach(l => {
+      if (l === "EN") return;
+      ["Title", "Description", "Data", "AIComment"].forEach(pref => {
+        const key = `${pref}${l}`;
         if (f[key]) translations[key] = f[key];
       });
     });
@@ -109,6 +136,7 @@ app.get("/poland/:titleEN", async (req, res) => {
     res.status(500).json({ error: e.toString() });
   }
 });
+
 
 // === /titlelist/poland (public) ===
 app.get("/titlelist/poland", async (req, res) => {
