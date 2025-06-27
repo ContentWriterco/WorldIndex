@@ -37,13 +37,6 @@ async function loadAllCategories() {
   return map;
 }
 
-// Middleware dla /poland/:titleEN
-app.use("/poland/:titleEN", (req, res, next) => {
-  if (req.headers["x-api-key"] !== PRIV) {
-    return res.status(403).json({ error: "Forbidden: invalid API key" });
-  }
-  next();
-});
 
 // === /poland/:titleEN (protected) ===
 app.get("/poland/:titleEN", async (req, res) => {
