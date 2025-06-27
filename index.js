@@ -52,19 +52,18 @@ app.get("/poland/:titleEN", async (req, res) => {
       {
         headers: { Authorization: `Bearer ${KEY}` },
         params: {
-          filterByFormula: `LOWER({TitleEN})="${titleEN}"`
+          filterByFormula: `LOWER({TitleEN})=\"${titleEN}\"`
         }
       }
     );
 
     const record = mainResp.data.records[0];
     if (!record) {
-      return res.status(404).json({ error: `No data for "${titleEN}"` });
+      return res.status(404).json({ error: `No data for \"${titleEN}\"` });
     }
 
     const f = record.fields;
 
-    // Parsowanie danych
     const data = [];
     if (f.Data && f.DataEN) {
       const heads = f.DataEN.split(";").map(s => s.trim());
@@ -79,17 +78,22 @@ app.get("/poland/:titleEN", async (req, res) => {
       });
     }
 
-    // Podstawowe meta z głównej tabeli
     const meta = {
       title:           f.TitleEN || "",
       description:     f.DescriptionEN || "",
       updateFrequency: f.UpdateFrequency || "",
       format:          f.DataEN || "",
       lastUpdate:      f.UpdatedThere || "",
-      nextUpdateTime:  f.NextUpdateTime || ""
+      nextUpdateTime:  f.NextUpdateTime || "",
+      researchName:    "",
+      researchPurpose: "",
+      definitions:     "",
+      methodology:     "",
+      sourceName:      "",
+      unit:            ""
     };
 
-    // Pobieranie metadanych z powiązanej tabeli Metadata
+    // ——— Metadata fetch ———
     if (Array.isArray(f.Metadata) && f.Metadata.length > 0) {
       const metadataId = f.Metadata[0];
       try {
@@ -99,8 +103,10 @@ app.get("/poland/:titleEN", async (req, res) => {
             headers: { Authorization: `Bearer ${KEY}` }
           }
         );
-        const m = metaResp.data.fields;
-    
+        const m = metaResp.data.fields || {};
+        console.log("🔍 metadataId:", metadataId);
+        console.log("🧪 metadata fields:", m);
+
         meta.researchName    = m[`ResearchName${langSuffix}`]    || "";
         meta.researchPurpose = m[`ResearchPurpose${langSuffix}`] || "";
         meta.definitions     = m[`Definitions${langSuffix}`]     || "";
@@ -108,11 +114,11 @@ app.get("/poland/:titleEN", async (req, res) => {
         meta.sourceName      = m[`Source Name${langSuffix}`]     || "";
         meta.unit            = m[`Unit${langSuffix}`]            || "";
       } catch (e) {
-        console.error("Błąd przy pobieraniu Metadata:", e.toString());
+        console.error("❗ Metadata fetch FAIL", e.response?.data || e.message || e);
+        // optionally: throw new Error("DEBUG Metadata fetch failed")
       }
     }
 
-    // Kategorie
     const catMap = await loadAllCategories();
     if (Array.isArray(f.CategorySelect) && f.CategorySelect.length) {
       const catFields = catMap[f.CategorySelect[0]];
@@ -124,7 +130,6 @@ app.get("/poland/:titleEN", async (req, res) => {
       meta.category = catTrans;
     }
 
-    // Tłumaczenia (TitlePL, DescriptionPL, itd.)
     const translations = {};
     LANGUAGES.forEach(l => {
       if (l === "EN") return;
@@ -136,7 +141,7 @@ app.get("/poland/:titleEN", async (req, res) => {
 
     res.json({ meta, data, translations });
   } catch (e) {
-    console.error("❌ General error:", e.toString());
+    console.error("❌ General error:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
