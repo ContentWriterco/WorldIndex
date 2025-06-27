@@ -88,13 +88,8 @@ app.get("/poland/:titleEN", async (req, res) => {
     };
 
     // Pobieranie metadanych z powiązanej tabeli Metadata
-    if (Array.isArray(f.linkedto) && f.linkedto.length > 0) {
-      const metadataId = typeof f.linkedto[0] === 'string'
-        ? f.linkedto[0]
-        : f.linkedto[0]?.id;
-
-      console.log("📄 Metadata ID used in fetch:", metadataId);
-
+    if (Array.isArray(f.Metadata) && f.Metadata.length > 0) {
+      const metadataId = f.Metadata[0];
       try {
         const metaResp = await axios.get(
           `https://api.airtable.com/v0/${BASE}/${META}/${metadataId}`,
@@ -103,7 +98,7 @@ app.get("/poland/:titleEN", async (req, res) => {
           }
         );
         const m = metaResp.data.fields;
-
+    
         meta.researchName    = m[`ResearchName${langSuffix}`]    || "";
         meta.researchPurpose = m[`ResearchPurpose${langSuffix}`] || "";
         meta.definitions     = m[`Definitions${langSuffix}`]     || "";
@@ -111,7 +106,7 @@ app.get("/poland/:titleEN", async (req, res) => {
         meta.sourceName      = m[`Source Name${langSuffix}`]     || "";
         meta.unit            = m[`Unit${langSuffix}`]            || "";
       } catch (e) {
-        console.error("❌ Metadata fetch error:", e.toString());
+        console.error("Błąd przy pobieraniu Metadata:", e.toString());
       }
     }
 
