@@ -9,6 +9,8 @@ const MAIN  = process.env.AIRTABLE_TABLE_NAME;
 const CATS  = process.env.AIRTABLE_CATEGORIES_TABLE_NAME;
 const KEY   = process.env.AIRTABLE_API_KEY;
 const PRIV  = process.env.PRIVATE_API_KEY;
+const META  = process.env.AIRTABLE_METADATA_TABLE_NAME;
+
 
 // Lista dwuliterowych kodów języków
 const LANGUAGES = [
