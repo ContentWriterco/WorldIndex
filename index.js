@@ -89,7 +89,12 @@ app.get("/poland/:titleEN", async (req, res) => {
 
     // Pobieranie metadanych z powiązanej tabeli Metadata
     if (Array.isArray(f.linkedto) && f.linkedto.length > 0) {
-      const metadataId = f.linkedto[0];
+      const metadataId = typeof f.linkedto[0] === 'string'
+        ? f.linkedto[0]
+        : f.linkedto[0]?.id;
+
+      console.log("📄 Metadata ID used in fetch:", metadataId);
+
       try {
         const metaResp = await axios.get(
           `https://api.airtable.com/v0/${BASE}/${META}/${metadataId}`,
