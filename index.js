@@ -45,7 +45,6 @@ app.get("/poland/:titleEN", async (req, res) => {
   const langSuffix = lang === "EN" ? "" : lang;
 
   try {
-    // Pobierz rekord z głównej tabeli (Poland)
     const mainResp = await axios.get(
       `https://api.airtable.com/v0/${BASE}/${MAIN}`,
       {
@@ -55,13 +54,15 @@ app.get("/poland/:titleEN", async (req, res) => {
         }
       }
     );
+
     const record = mainResp.data.records[0];
     if (!record) {
       return res.status(404).json({ error: `No data for "${titleEN}"` });
     }
+
     const f = record.fields;
 
-    // Parsuj dane z kolumny Data/DataEN
+    // Parsowanie danych
     const data = [];
     if (f.Data && f.DataEN) {
       const heads = f.DataEN.split(";").map(s => s.trim());
@@ -76,7 +77,7 @@ app.get("/poland/:titleEN", async (req, res) => {
       });
     }
 
-    // Podstawowe pole meta
+    // Podstawowe meta z głównej tabeli
     const meta = {
       title:           f.TitleEN || "",
       description:     f.DescriptionEN || "",
@@ -86,12 +87,12 @@ app.get("/poland/:titleEN", async (req, res) => {
       nextUpdateTime:  f.NextUpdateTime || ""
     };
 
-    // Pobierz dane z powiązanej tabeli Metadata przez pole `linkedto`
+    // Pobieranie metadanych z powiązanej tabeli Metadata
     if (Array.isArray(f.linkedto) && f.linkedto.length > 0) {
       const metadataId = f.linkedto[0];
       try {
         const metaResp = await axios.get(
-          `https://api.airtable.com/v0/${BASE}/Metadata/${metadataId}`,
+          `https://api.airtable.com/v0/${BASE}/${META}/${metadataId}`,
           {
             headers: { Authorization: `Bearer ${KEY}` }
           }
@@ -105,11 +106,11 @@ app.get("/poland/:titleEN", async (req, res) => {
         meta.sourceName      = m[`Source Name${langSuffix}`]     || "";
         meta.unit            = m[`Unit${langSuffix}`]            || "";
       } catch (e) {
-        console.error("Błąd przy pobieraniu Metadata:", e.toString());
+        console.error("❌ Metadata fetch error:", e.toString());
       }
     }
 
-    // Pobierz mapę kategorii
+    // Kategorie
     const catMap = await loadAllCategories();
     if (Array.isArray(f.CategorySelect) && f.CategorySelect.length) {
       const catFields = catMap[f.CategorySelect[0]];
@@ -121,21 +122,23 @@ app.get("/poland/:titleEN", async (req, res) => {
       meta.category = catTrans;
     }
 
-    // Tłumaczenia
+    // Tłumaczenia (TitlePL, DescriptionPL, itd.)
     const translations = {};
     LANGUAGES.forEach(l => {
       if (l === "EN") return;
-      ["Title", "Description", "Data", "AIComment"].forEach(pref => {
-        const key = `${pref}${l}`;
+      ["Title", "Description", "Data", "AIComment"].forEach(prefix => {
+        const key = `${prefix}${l}`;
         if (f[key]) translations[key] = f[key];
       });
     });
 
     res.json({ meta, data, translations });
   } catch (e) {
+    console.error("❌ General error:", e.toString());
     res.status(500).json({ error: e.toString() });
   }
 });
+
 
 
 // === /titlelist/poland (public) ===
