@@ -1067,7 +1067,10 @@ app.get("/dataset/:country/news", async (req, res) => {
           const commentRecordId = linkedCommentRecordIds[0];
           const commentFields = allComments[commentRecordId];
           if (commentFields) {
-            comments.push(commentText);
+            const commentText = commentFields[aiCommentKey] || commentFields.AICommentEN;
+            if (commentText && commentText.trim()) {
+              comments.push(commentText);
+            }
           }
         }
       }
