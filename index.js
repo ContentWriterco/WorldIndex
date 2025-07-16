@@ -1805,4 +1805,31 @@ app.get("/data/:numericId", async (req, res) => {
   }
 });
 
+// --- AUTOMATYCZNE ODŚWIEŻANIE CACHE CO 10 MINUT ---
+const AUTO_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minut
+
+async function refreshAllCaches() {
+    try {
+        categoryMapCache = null;
+        contentHubsCache = null;
+        commentMapCache = null;
+        divisionsCache = null;
+        cacheLastLoaded = 0;
+        // Wymuś natychmiastowe załadowanie cache (opcjonalnie)
+        await loadAllCategories();
+        await loadAllContentHubs();
+        await loadAllComments();
+        await loadAllDivisions();
+        console.log(`[AUTO-REFRESH] Cache refreshed at ${new Date().toISOString()}`);
+    } catch (e) {
+        console.error("[AUTO-REFRESH] Failed to refresh cache:", e);
+    }
+}
+
+// Uruchom automatyczne odświeżanie co 10 minut
+setInterval(refreshAllCaches, AUTO_REFRESH_INTERVAL_MS);
+
+// Opcjonalnie: odśwież cache od razu po starcie serwera
+refreshAllCaches();
+
 app.listen(PORT, () => console.log(`Unified API is running on port ${PORT}`)); 
